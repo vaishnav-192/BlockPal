@@ -1,24 +1,24 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-contract Paypal{
+contract Paypal {
     //Define the owewr of the smart contract
     address public owner;
 
-    constructor(){
+    constructor() {
         owner = msg.sender;
     }
 
     //create struct and mapping for request, trans and name
 
-    struct request{
+    struct request {
         address requestor;
         uint256 amount;
         string message;
         string name;
     }
 
-    struct sendReceive{
+    struct sendReceive {
         string action;
         uint256 amount;
         string message;
@@ -26,18 +26,18 @@ contract Paypal{
         string otherPartyname;
     }
 
-    struct userName{
+    struct userName {
         string name;
         bool hasName;
     }
 
-    mapping(address => userName)public names;
-    mapping(address => request[])requests;
-    mapping(address => sendReceive[])history;
+    mapping(address => userName) public names;
+    mapping(address => request[]) requests;
+    mapping(address => sendReceive[]) history;
 
     //add a name to wallet to address
 
-    function addName(string memory _name)public {
+    function addName(string memory _name) public {
         userName storage newUserName = names[msg.sender];
         newUserName.name = _name;
         newUserName.hasName = true;
@@ -45,12 +45,16 @@ contract Paypal{
 
     //create req
 
-    function createRequest(address user, uint256 _amount, string memory _message)public {
+    function createRequest(
+        address user,
+        uint256 _amount,
+        string memory _message
+    ) public {
         request memory newRequest;
         newRequest.requestor = msg.sender;
         newRequest.amount = _amount;
         newRequest.message = _message;
-        if(names[msg.sender].hasName){
+        if (names[msg.sender].hasName) {
             newRequest.name = names[msg.sender].name;
         }
         requests[user].push(newRequest);
@@ -58,29 +62,39 @@ contract Paypal{
 
     //pay a req
 
-    function payRequest(uint256 _request) public payable{
-        require(_request<requests[msg.sender].length, "no such reqs");
+    function payRequest(uint256 _request) public payable {
+        require(_request < requests[msg.sender].length, "no such reqs");
         request[] storage myRequests = requests[msg.sender];
         request storage payableRequest = myRequests[_request];
 
-        uint256 toPay = payableRequest.amount*1000000000000000000; //18 zeros
+        uint256 toPay = payableRequest.amount * 1000000000000000000; //18 zeros
         require(msg.value == (toPay), "pay correct amount");
 
         payable(payableRequest.requestor).transfer(msg.value);
 
-        addHistory(msg.sender, payableRequest.requestor, payableRequest.amount, payableRequest.message);
-        
-        myRequests[_request] = myRequests[myRequests.length-1];
+        addHistory(
+            msg.sender,
+            payableRequest.requestor,
+            payableRequest.amount,
+            payableRequest.message
+        );
+
+        myRequests[_request] = myRequests[myRequests.length - 1];
         myRequests.pop();
     }
 
-    function addHistory(address sender, address receiver, uint256 _amount, string memory _message)private{
+    function addHistory(
+        address sender,
+        address receiver,
+        uint256 _amount,
+        string memory _message
+    ) private {
         sendReceive memory newSend;
         newSend.action = "-";
         newSend.amount = _amount;
         newSend.message = _message;
         newSend.otherPartyAddress = receiver;
-        if(names[receiver].hasName){
+        if (names[receiver].hasName) {
             newSend.otherPartyname = names[receiver].name;
         }
         history[sender].push(newSend);
@@ -90,46 +104,51 @@ contract Paypal{
         newReceive.amount = _amount;
         newReceive.message = _message;
         newReceive.otherPartyAddress = sender;
-        if(names[sender].hasName){
+        if (names[sender].hasName) {
             newReceive.otherPartyname = names[sender].name;
         }
         history[receiver].push(newReceive);
-        
     }
 
     //get all req sent to usr
 
-    function getMyRequests(address _user)public view returns(
-        address[] memory, 
-        uint256[] memory, 
-        string[] memory, 
-        string[] memory
-    ){
+    function getMyRequests(
+        address _user
+    )
+        public
+        view
+        returns (
+            address[] memory,
+            uint256[] memory,
+            string[] memory,
+            string[] memory
+        )
+    {
         address[] memory addrs = new address[](requests[_user].length);
         uint256[] memory amnt = new uint256[](requests[_user].length);
         string[] memory msge = new string[](requests[_user].length);
         string[] memory nme = new string[](requests[_user].length);
 
-        for(uint i=0; i< requests[_user].length; i++){
-            request storage getMyRequests( = requests[_user][i]);
+        for (uint i = 0; i < requests[_user].length; i++) {
+            request storage myRequests = requests[_user][i];
             addrs[i] = myRequests.requestor;
             amnt[i] = myRequests.amount;
             msge[i] = myRequests.message;
             nme[i] = myRequests.name;
         }
 
-        return (addrs, amnt, msge, nme);  
-        
+        return (addrs, amnt, msge, nme);
     }
 
     //get all history trans usr has been apart of
 
-    function getMyHistory(address _user) public view returns(sendReceive[] memory){
+    function getMyHistory(
+        address _user
+    ) public view returns (sendReceive[] memory) {
         return history[_user];
     }
 
-    function getMyName(address _user) public view returns(userName memory){
+    function getMyName(address _user) public view returns (userName memory) {
         return names[_user];
     }
-
 }
